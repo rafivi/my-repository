@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  Simple cfn with EC2 instance
+  and SG
+  
+Resources:
+  HildaInstance: # Optional change
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0230bd60aa48260c6
+      InstanceType: t2.micro
+      KeyName: hilda-us-east-1 # Use your own keypair without .pem
+      UserData: !Base64 |
+        #!/bin/bash -x
+
+        yum update -y
+
+        yum install python3 -y
+        yum install pip -y
+        pip install flask
+
+        cd /home/ec2-user
+
+        FOLDER="https://raw.githubusercontent.com/altazbhanji/my-repository/main/001-roman-numerals-converter"
+        wget ${FOLDER}/app.py
+        mkdir templates
+        cd templates
+        wget ${FOLDER}/templates/index.html
+        wget ${FOLDER}/templates/result.html
+
+        cd ..
+        python3 app.py
+      SecurityGroups: 
+        - !Ref HildaSecGrp # Must match resource
+      Tags: 
+        - Key: Name
+          Value: hilda-instance
+  
+  HildaSecGrp: # Optional change
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allows SSH & HTTP connection # Required
+      SecurityGroupIngress: 
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+Outputs:
+  WebsiteURL:
+    Description: URL for website
+    Value: !Join ["", ["http://", !GetAtt HildaInstance.PublicDnsName]] # Must match resource
